@@ -3,7 +3,7 @@ require "spaceship"
 class AddTesterResponse
   attr_accessor :message
   attr_accessor :type
-end  
+end
 
 class BoardingService
   include AbstractController::Translation
@@ -18,9 +18,9 @@ class BoardingService
   attr_accessor :itc_closed_text
 
   def initialize(app_id: ENV["ITC_APP_ID"],
-                   user: ENV["ITC_USER"] || ENV["FASTLANE_USER"],
-               password: ENV["ITC_PASSWORD"] || ENV["FASTLANE_PASSWORD"],
-          tester_groups: ENV["ITC_APP_TESTER_GROUPS"])
+                 user: ENV["ITC_USER"] || ENV["FASTLANE_USER"],
+                 password: ENV["ITC_PASSWORD"] || ENV["FASTLANE_PASSWORD"],
+                 tester_groups: ENV["ITC_APP_TESTER_GROUPS"])
     @app_id = app_id
     @user = user
     @password = password
@@ -43,7 +43,7 @@ class BoardingService
       Rails.logger.info "Tester #{email} already exists on application"
       add_tester_response.message = t(:message_email_exists)
       add_tester_response.type = "danger"
-    elsif tester = Spaceship::Tunes::Tester::External.find(email)
+    elsif (tester = Spaceship::Tunes::Tester::External.find(email))
       Rails.logger.info "Tester #{email} exists in iTunesConnect but not on application"
       add_tester_response.message = t(:message_email_exists)
       add_tester_response.type = "danger"
@@ -60,7 +60,7 @@ class BoardingService
 
     if app.apple_id.length > 0
       groups = tester_groups || ["External Testers"]
-      Rails.logger.info "Addding tester to application in group(s): #{groups.to_s}"
+      Rails.logger.info "Addding tester to application in group(s): #{groups}"
       add_tester_to_groups!(tester: tester, app: app, groups: tester_groups)
       Rails.logger.info "Done"
     end
@@ -68,58 +68,58 @@ class BoardingService
   end
 
   private
-    def ensure_values
-      error_message = []
 
-      error_message << "Environment variable `ITC_APP_ID` required" if @app_id.to_s.length == 0
-      error_message << "Environment variable `ITC_USER` or `FASTLANE_USER` required" if @user.to_s.length == 0
-      error_message << "Environment variable `ITC_PASSWORD` or `FASTLANE_PASSWORD`" if @password.to_s.length == 0
-      raise error_message.join("\n") if error_message.length > 0
+  def ensure_values
+    error_message = []
 
-      spaceship = Spaceship::Tunes.login(@user, @password)
-      spaceship.select_team
+    error_message << "Environment variable `ITC_APP_ID` required" if @app_id.to_s.length == 0
+    error_message << "Environment variable `ITC_USER` or `FASTLANE_USER` required" if @user.to_s.length == 0
+    error_message << "Environment variable `ITC_PASSWORD` or `FASTLANE_PASSWORD`" if @password.to_s.length == 0
+    raise error_message.join("\n") if error_message.length > 0
 
-      @app ||= Spaceship::Tunes::Application.find(@app_id)      
-      raise "Could not find app with ID #{app_id}" if @app.nil?
+    spaceship = Spaceship::Tunes.login(@user, @password)
+    spaceship.select_team
 
-      if tester_groups
-        test_flight_groups = Spaceship::TestFlight::Group.filter_groups(app_id: @app.apple_id)
-        test_flight_group_names = test_flight_groups.map { |group| group.name }.to_set
-        tester_groups.select do |group_name|
-          next if test_flight_group_names.include?(group_name)
-          error_message << "TestFlight missing group `#{group_name}`, You need to first create this group in iTunes Connect."
-        end
+    @app ||= Spaceship::Tunes::Application.find(@app_id)
+    raise "Could not find app with ID #{app_id}" if @app.nil?
+
+    if tester_groups
+      test_flight_groups = Spaceship::TestFlight::Group.filter_groups(app_id: @app.apple_id)
+      test_flight_group_names = test_flight_groups.map(&:name).to_set
+      tester_groups.select do |group_name|
+        next if test_flight_group_names.include?(group_name)
+        error_message << "TestFlight missing group `#{group_name}`, You need to first create this group in iTunes Connect."
       end
-
-      raise error_message.join("\n") if error_message.length > 0
     end
 
-    def add_tester_to_groups!(tester: nil, app: nil, groups: nil)
-      if groups.nil?
-          default_external_group = app.default_external_group
-          if default_external_group.nil?
-            Rails.logger.error "The app #{app.name} does not have a default external group. Please make sure to pass group names to the `:groups` option."
-          end
-          test_flight_groups = [default_external_group]
-      else
-        test_flight_groups = Spaceship::TestFlight::Group.filter_groups(app_id: app.apple_id) do |group| 
-          groups.include?(group.name) 
-        end
+    raise error_message.join("\n") if error_message.length > 0
+  end
 
-        Rails.logger.error "There are no groups available matching the names passed to the `:groups` option." if test_flight_groups.empty?
+  def add_tester_to_groups!(tester: nil, app: nil, groups: nil)
+    if groups.nil?
+      default_external_group = app.default_external_group
+      if default_external_group.nil?
+        Rails.logger.error "The app #{app.name} does not have a default external group. Please make sure to pass group names to the `:groups` option."
       end
-      
-      test_flight_groups.each { |group| group.add_tester!(tester) }
+      test_flight_groups = [default_external_group]
+    else
+      test_flight_groups = Spaceship::TestFlight::Group.filter_groups(app_id: app.apple_id) do |group|
+        groups.include?(group.name)
+      end
+
+      Rails.logger.error "There are no groups available matching the names passed to the `:groups` option." if test_flight_groups.empty?
     end
 
-    def testing_is_live?
-      app.build_trains.each do |version, train|
-        if train.external_testing_enabled
-          train.builds.each do |build|
-            return true if build.external_testing_enabled
-          end
-        end
+    test_flight_groups.each { |group| group.add_tester!(tester) }
+  end
+
+  def testing_is_live?
+    app.build_trains.each do |version, train|
+      next unless train.external_testing_enabled
+      train.builds.each do |build|
+        return true if build.external_testing_enabled
       end
-      return false
     end
+    return false
+  end
 end
