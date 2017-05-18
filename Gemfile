@@ -24,7 +24,6 @@ gem 'http_accept_language', '~> 2.0.5'
 
 group :production do
   gem 'puma'
-  gem 'rails_12factor'
 end
 
 group :development, :test do
