@@ -18,3 +18,4 @@
 exports.sh
 
 vendor/
+public/assets
