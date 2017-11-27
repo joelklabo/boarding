@@ -37,19 +37,11 @@ class BoardingService
 
   def add_tester(email, first_name, last_name)
     add_tester_response = AddTesterResponse.new
+    add_tester_response.type = "danger"
+
     tester = find_app_tester(email: email, app: app)
     if tester
-      test_flight_tester = Spaceship::TestFlight::Tester.find(app_id: @app_id, email: email)
-      
-      if test_flight_tester
-        test_flight_tester.resend_invite(app_id: @app_id)
-        add_tester_response.type = "success"
-        add_tester_response.message = t(:resending_invite)
-      else
-        add_tester_response.type = "danger"
-        add_tester_response.message = t(:message_email_exists)
-      end      
-      
+	add_tester_response.message = t(:message_email_exists)
     else
       tester = create_tester(
         email: email,
