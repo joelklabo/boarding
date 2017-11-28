@@ -35,4 +35,5 @@ en:
   message_success_pending: "Almost done! To get access, check your email for an invite from Apple about TestFlight."
   message_email_exists: "Email address is already registered"
   message_error: "Something went wrong, please contact the application owner"
-  resending_invite: "Your email is already registered, so we’ve sent you another invite, just now. You should get an email from Apple with further details on using TestFlight, the app you’ll need to get Beta access."
+  loading: "Loading"
+  imprint: "Imprint"
